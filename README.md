@@ -10,7 +10,7 @@ WaterwaveView
 >  效果图
 
 <br/>
-<img src="https://github.com/wangjinyu501/RippleView/blob/master/ripple.gif"/>
+<img src="https://github.com/wangjinyu501/WaterWaveView/blob/master/device-2014-09-24-171113.png"/>
 <br/>
 
 
