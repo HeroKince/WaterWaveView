@@ -49,7 +49,7 @@ public class WaterWaveView extends View {
 	private final float f = 0.033F;
 	private int mAlpha = 50;// 透明度
 	private float mAmplitude = 10.0F; // 振幅
-	private float mWateLevel = 0.5F;// 水高(0~1)
+	private float mWaterLevel = 0.5F;// 水高(0~1)
 	private Path mPath;
 
 	private String flowNum = "1024M";
@@ -88,7 +88,11 @@ public class WaterWaveView extends View {
 		init(mContext);
 	}
 
-	private void init(Context context) {
+    public void setmWaterLevel(float mWaterLevel) {
+        this.mWaterLevel = mWaterLevel;
+    }
+
+    private void init(Context context) {
 		mRingPaint = new Paint();
 		mRingPaint.setColor(mRingColor);
 		mRingPaint.setAlpha(50);
@@ -199,11 +203,20 @@ public class WaterWaveView extends View {
 		setBackgroundColor(mContext.getResources().getColor(
 				R.color.holo_purple2));
 
-		canvas.drawCircle(mScreenWidth / 2, mScreenHeight / 2,
-				mScreenWidth / 4, mRingPaint);
+        //计算当前油量线和水平中线的距离
+        float centerOffset = Math.abs(mScreenWidth / 2 * mWaterLevel - mScreenWidth / 4);
+        //计算油量线和与水平中线的角度
+        float horiAngle = (float)(Math.asin(centerOffset / (mScreenWidth / 4)) * 180 / Math.PI);
+        //扇形的起始角度和扫过角度
+        float startAngle, sweepAngle;
+        if (mWaterLevel > 0.5F) {
+            startAngle = 360F - horiAngle;
+            sweepAngle = 180F + 2 * horiAngle;
+        } else {
+            startAngle = horiAngle;
+            sweepAngle = 180F - 2 * horiAngle;
+        }
 
-		canvas.drawCircle(mScreenWidth / 2, mScreenHeight / 2, mScreenWidth / 4
-				- mRingSTROKEWidth / 2, mCirclePaint);
 		canvas.drawLine(mScreenWidth * 3 / 8, mScreenHeight * 5 / 8,
 				mScreenWidth * 5 / 8, mScreenHeight * 5 / 8, linePaint);
 		float num = flowPaint.measureText(flowNum);
@@ -215,40 +228,52 @@ public class WaterWaveView extends View {
 
 		// 如果未开始（未调用startWave方法）,绘制一个扇形
 		if ((!mStarted) || (mScreenWidth == 0) || (mScreenHeight == 0)) {
-			RectF oval = new RectF(mScreenWidth / 4 + mRingSTROKEWidth / 2,
-					mScreenHeight / 4 + mRingSTROKEWidth / 2, mScreenWidth * 3
-							/ 4 - mRingSTROKEWidth / 2, mScreenHeight * 3 / 4
-							- mRingSTROKEWidth / 2);// 设置个新的长方形，扫描测量
-			canvas.drawArc(oval, 0, 180, true, mWavePaint);
+            // 绘制,即水面静止时的高度
+            RectF oval = new RectF(mScreenWidth / 4, mScreenHeight / 4,
+                    mScreenWidth * 3 / 4, mScreenHeight * 3 / 4 );
+            canvas.drawArc(oval, startAngle, sweepAngle, false, mWavePaint);
 			return;
 		}
 		// 绘制,即水面静止时的高度
-		RectF oval = new RectF(mScreenWidth / 4 + mRingSTROKEWidth / 2,
-				mScreenHeight / 4 + mRingSTROKEWidth / 2 + mAmplitude * 2,
-				mScreenWidth * 3 / 4 - mRingSTROKEWidth / 2, mScreenHeight * 3
-						/ 4 - mRingSTROKEWidth / 2);// 设置个新的长方形，扫描测量
-		canvas.drawArc(oval, 0, 180, true, mWavePaint);
+        // 绘制,即水面静止时的高度
+        RectF oval = new RectF(mScreenWidth / 4, mScreenHeight / 4,
+                mScreenWidth * 3 / 4, mScreenHeight * 3 / 4 );
+        canvas.drawArc(oval, startAngle, sweepAngle, false, mWavePaint);
 
 		if (this.c >= 8388607L) {
 			this.c = 0L;
 		}
-		// 每次onDraw时c都会自增
-		c = (1L + c);
-		float f1 = mScreenHeight * (1.0F - mWateLevel);
-		int top = (int) (f1 + mAmplitude);
-		mPath.reset();
-		int startX = mScreenWidth / 2 - mScreenWidth / 4 + mRingSTROKEWidth / 2;
-		// 波浪效果
-		while (startX < mScreenWidth / 2 + mScreenWidth / 4 - mRingSTROKEWidth
-				/ 2) {
-			int startY = (int) (f1 - mAmplitude
-					* Math.sin(Math.PI
-							* (2.0F * (startX + this.c * width * this.f))
-							/ width));
-			canvas.drawLine(startX, startY, startX, top, mWavePaint);
-			startX++;
-		}
-		canvas.restore();
+        // 每次onDraw时c都会自增
+        c = (1L + c);
+        float f1 = mScreenHeight * (1.0F - (0.25F + mWaterLevel / 2)) - mAmplitude;
+        //当前油量线的长度
+        float waveWidth = (float)Math.sqrt(mScreenWidth * mScreenWidth / 16 - centerOffset * centerOffset);
+        //与圆半径的偏移量
+        float offsetWidth = mScreenWidth / 4 - waveWidth;
+
+        int top = (int) (f1 + mAmplitude);
+        mPath.reset();
+        //起始振动X坐标，结束振动X坐标
+        int startX, endX;
+        if (mWaterLevel > 0.50F) {
+            startX = (int) (mScreenWidth / 4 + offsetWidth);
+            endX = (int) (mScreenWidth / 2 + mScreenWidth / 4 - offsetWidth);
+        } else {
+            startX = (int) (mScreenWidth / 4 + offsetWidth - mAmplitude);
+            endX = (int) (mScreenWidth / 2 + mScreenWidth / 4 - offsetWidth + mAmplitude);
+        }
+        // 波浪效果
+        while (startX < endX) {
+            int startY = (int)
+                    (f1 - mAmplitude * Math.sin(Math.PI * (2.0F * (startX + this.c * width * this.f)) / width));
+            canvas.drawLine(startX, startY, startX, top, mWavePaint);
+            startX++;
+        }
+        canvas.drawCircle(mScreenWidth / 2, mScreenHeight / 2,
+                mScreenWidth / 4 + mRingSTROKEWidth / 2, mRingPaint);
+
+        canvas.drawCircle(mScreenWidth / 2, mScreenHeight / 2, mScreenWidth / 4, mCirclePaint);
+        canvas.restore();
 	}
 
 	@Override

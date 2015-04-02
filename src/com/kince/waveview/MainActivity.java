@@ -14,6 +14,7 @@ public class MainActivity extends Activity {
 		setContentView(R.layout.activity_main);
 
 		mWaterWaveView = (WaterWaveView) findViewById(R.id.wave_view);
+        mWaterWaveView.setmWaterLevel(0.8F);
 		mWaterWaveView.startWave();
 
 	}
